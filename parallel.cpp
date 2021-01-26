@@ -318,6 +318,20 @@ std::vector<std::set<int>> makeDAG(int* &col, int* &row, double* &val, int n, bo
     return dag;
 }
 
+std::set<int> makeReachset(std::vector<std::set<int>> const &dag, bool* &visited, int n, double* &x) {
+    std::set<int> reachset;
+
+    // Creating dependencies using DFS
+    for (int i = 0; i < n; ++i) {
+        if (x[i] != 0) {
+            if (!visited[i]) {
+                visit(dag, i, visited, reachset);
+            }
+        }
+    }
+    return reachset;
+}
+
 // Verify if L*x = b
 int verify(int* &col, int* &row, double* &val, int n, double* &x, std::string rhsFName) {
     double *res = new double[n]();
@@ -381,19 +395,10 @@ int main(int argc, char *argv[]) {
     }
 
     // Making Reachset (First constructing the DAG)
-    // std::vector<std::set<int>> dag(n);
     bool *visited = new bool[n]();
-    std::set<int> reachset;
     std::vector<std::set<int>> dag = makeDAG(col, row, val, n, visited);
-
-    // Creating dependencies using DFS
-    for (int i = 0; i < n; ++i) {
-        if (x[i] != 0) {
-            if (!visited[i]) {
-                visit(dag, i, visited, reachset);
-            }
-        }
-    }
+    std::set<int> reachset = makeReachset(dag, visited, n, x);
+    
 
     // for (auto f : reachset) {
     //     std::cout << f+1 << ": ";
