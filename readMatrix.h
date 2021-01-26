@@ -1,4 +1,3 @@
-#include <omp.h>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -6,7 +5,6 @@
 #include <sstream>
 #include <set>
 #include <vector>
-#include <assert.h>
 
 /*
  * reading a CSC matrix from a coordinate file, stored col-ordered
