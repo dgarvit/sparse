@@ -58,7 +58,7 @@ void verify(int* &col, int* &row, double* &val, int n, double* &x, std::string r
         //     std::cout << i << " " << res[i] << " " << x1[i] << std::endl;
         // }
     }
-    std::cout << "Result verified with " << count << " values not matching the zeros" << std::endl;
+    std::cout << "Result verified with " << count << " values of matrix product L*x not matching the zeros in RHS." << std::endl;
 }
 
 #endif
