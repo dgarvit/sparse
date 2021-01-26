@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
-        std::cout << "Usage: ./<bin> /path/to/L.mtx /path/to/RHS.mtx" << std::endl;
+        std::cout << "Usage: ./main /path/to/L.mtx /path/to/RHS.mtx" << std::endl;
         return -1;
     }
     std::string fName = argv[1];
