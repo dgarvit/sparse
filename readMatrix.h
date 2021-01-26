@@ -105,6 +105,9 @@ bool readSparseMatrix(std::string fName, int &n, int &NNZ, int* &col, int* &row,
  return true;
 }
 
+/*
+ * reading a dense vector from a coordinate file, stored col-ordered
+ */
 bool readRHSMatrix(std::string fName, double* &val, const int size) {
 
  std::ifstream inFile;
