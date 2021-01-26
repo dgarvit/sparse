@@ -1,10 +1,11 @@
 #ifndef READ_MATRIX_H
 #define READ_MATRIX_H
 
-#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+
+// Both read matrix functions partially taken from sympiler repository. However, both have been modified
 
 /*
  * reading a CSC matrix from a coordinate file, stored col-ordered
@@ -74,20 +75,16 @@ bool readSparseMatrix(std::string fName, int &n, int &NNZ, int* &col, int* &row,
  if(n <= 0 || NNZ <= 0)
   return false;
  col = new int[n + 1]();
- // colL = new int[n + 1]; colU = new int[n + 1];
  row = new int[NNZ];
- // rowL = new int[factorSize]; rowU = new int[factorSize];
  val = new double[NNZ];
- // valL = new double[factorSize]; valU = new double[factorSize];
  if(!val || !col || !row)
   return false;
- //Initializing the result vector
  int y, x, colCnt=0, nnzCnt=0;
  double value;
 
  col[0]=0;
  for (int i = 0; i < NNZ; ++i) {
-    inFile>>x;//zero indexing
+    inFile>>x;
     inFile>>y;
     inFile>>value;
     if(y > n || y > x || x > n) {
@@ -175,7 +172,6 @@ bool readRHSMatrix(std::string fName, double* &val, const int size) {
      return false;
  }
  val = new double[n];
- // valL = new double[factorSize]; valU = new double[factorSize];
  if(!val)
   return false;
  //Initializing the result vector
@@ -183,7 +179,7 @@ bool readRHSMatrix(std::string fName, double* &val, const int size) {
  double value;
 
  for (int i = 0; i < NNZ; ++i) {
-    inFile>>x;//zero indexing
+    inFile>>x;
     inFile>>y;
     inFile>>value;
     if(y > 1 || x > n) {

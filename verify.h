@@ -53,10 +53,6 @@ void verify(int* &col, int* &row, double* &val, int n, double* &x, std::string r
                 ++count;
             }
         }
-        // if (diff > 0.001) {
-        //     ++count;
-        //     std::cout << i << " " << res[i] << " " << x1[i] << std::endl;
-        // }
     }
     std::cout << "Result verified with " << count << " values of matrix product L*x not matching the zeros in RHS." << std::endl;
 }
