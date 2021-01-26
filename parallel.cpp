@@ -11,7 +11,7 @@
 /*
  * reading a CSC matrix from a coordinate file, stored col-ordered
  */
-bool readMatrix(std::string fName, int &n, int &NNZ, int* &col,//FIXME change col type to size_t
+bool readSparseMatrix(std::string fName, int &n, int &NNZ, int* &col,//FIXME change col type to size_t
                 int* &row, double* &val){
  /*This function reads the input matrix from "fName" file and
   * allocate memory for matrix A, L and U.
@@ -35,33 +35,33 @@ bool readMatrix(std::string fName, int &n, int &NNZ, int* &col,//FIXME change co
  for (unsigned i=0; i<line.length(); line[i]=tolower(line[i]),i++);
  std::istringstream iss(line);
  if (!(iss >> banner >> mtx >> crd >> arith >> sym)){
-  std::cout<<"Invalid header (first line does not contain 5 tokens)\n";
+  std::cout<<"Invalid header (first line does not contain 5 tokens)" << std::endl;
   return false;
  }
 
  if(banner.compare("%%matrixmarket")) {
-  std::cout<<"Invalid header (first token is not \"%%%%MatrixMarket\")\n";
+  std::cout<<"Invalid header (first token is not \"%%%%MatrixMarket\")" << std::endl;
   return false;
  }
  if(mtx.compare("matrix")) {
-  std::cout<<"Not a matrix; this driver cannot handle that.\"\n";
+  std::cout<<"Not a matrix; this driver cannot handle that." << std::endl;
   return false;
  }
  if(crd.compare("coordinate")) {
-  std::cout<<"Not in coordinate format; this driver cannot handle that.\"\n";
+  std::cout<<"Not in coordinate format; this driver cannot handle that." << std::endl;
   return false;
  }
  if(arith.compare("real")) {
   if(!arith.compare("complex")) {
-   std::cout<<"Complex matrix; use zreadMM instead!\n";
+   std::cout<<"Complex matrix; use zreadMM instead!" << std::endl;
    return false;
   }
   else if(!arith.compare("pattern")) {
-   std::cout<<"Pattern matrix; values are needed!\n";
+   std::cout<<"Pattern matrix; values are needed!" << std::endl;
    return false;
   }
   else {
-   std::cout<<"Unknown arithmetic\n";
+   std::cout<<"Unknown arithmetic" << std::endl;
    return false;
   }
  }
@@ -71,7 +71,7 @@ bool readMatrix(std::string fName, int &n, int &NNZ, int* &col,//FIXME change co
  }
  std::istringstream issDim(line);
  if (!(issDim >> n >> n >> NNZ)){
-  std::cout<<"The matrix dimension is missing\n";
+  std::cout<<"The matrix dimension is missing" << std::endl;
   return false;
  }
  if(n <= 0 || NNZ <= 0)
@@ -103,31 +103,95 @@ bool readMatrix(std::string fName, int &n, int &NNZ, int* &col,//FIXME change co
  }
  for (int i = 2; i <= n; ++i)
     col[i] += col[i-1];
-// col[0] = 0;
-//  for (int i = 0; nnzCnt<NNZ; ) {//Reading from file row by row
-//   inFile>>x;x--;
-//   inFile>>y;y--;//zero indexing
-//   inFile>>value;
-//   if(y > n || y > x || x > n)
-//    return false;
+ return true;
+}
 
-//   if(y==i){
-//    val[nnzCnt]=value;
-//    row[nnzCnt]=x;
-//    colCnt++; nnzCnt++;
-//   }
-//   else{//New col
-//    col[i+1]=col[i]+colCnt;
-//    i++;//next iteration
-//    colCnt=1;
-//    val[nnzCnt]=value;
-//    row[nnzCnt]=x;
-//    nnzCnt++;
-//   }
+bool readRHSMatrix(std::string fName, double* &val, const int size) {
 
-//  }
-//  col[n]= col[n - 1] + colCnt;//last col
+ std::ifstream inFile;
+ inFile.open(fName);
+ std::string line,banner, mtx, crd, arith, sym;
+ /*  File format:
+  *    %%MatrixMarket matrix coordinate real general/symmetric/...
+  *    % ...
+  *    % (optional comments)
+  *    % ...
+  *    #rows    #non-zero
+  *    Triplet in the rest of lines: row    col    value
+  */
+ std::getline(inFile,line);
+ for (unsigned i=0; i<line.length(); line[i]=tolower(line[i]),i++);
+ std::istringstream iss(line);
+ if (!(iss >> banner >> mtx >> crd >> arith >> sym)){
+  std::cout<<"Invalid header (first line does not contain 5 tokens)" << std::endl;
+  return false;
+ }
 
+ if(banner.compare("%%matrixmarket")) {
+  std::cout<<"Invalid header (first token is not \"%%%%MatrixMarket\")" << std::endl;
+  return false;
+ }
+ if(mtx.compare("matrix")) {
+  std::cout<<"Not a matrix; this driver cannot handle that." << std::endl;
+  return false;
+ }
+ if(crd.compare("coordinate")) {
+  std::cout<<"Not in coordinate format; this driver cannot handle that." << std::endl;
+  return false;
+ }
+ if(arith.compare("real")) {
+  if(!arith.compare("complex")) {
+   std::cout<<"Complex matrix; use zreadMM instead!" << std::endl;
+   return false;
+  }
+  else if(!arith.compare("pattern")) {
+   std::cout<<"Pattern matrix; values are needed!" << std::endl;
+   return false;
+  }
+  else {
+   std::cout<<"Unknown arithmetic" << std::endl;
+   return false;
+  }
+ }
+ while (!line.compare(0,1,"%"))
+ {
+  std::getline(inFile, line);
+ }
+ int n, cols, NNZ;
+ std::istringstream issDim(line);
+ if (!(issDim >> n >> cols >> NNZ)){
+  std::cout<<"The matrix dimension is missing" << std::endl;
+  return false;
+ }
+ if(n <= 0 || NNZ <= 0)
+  return false;
+ if (n != size) {
+     std::cout << "Dimensions of L and RHS do not match" << std::endl;
+     std::cout << size << " " << n << std::endl;
+     return false;
+ }
+ if (cols != 1) {
+     std::cout << "RHS matrix has incorrect dimensions" << std::endl;
+     return false;
+ }
+ val = new double[n];
+ // valL = new double[factorSize]; valU = new double[factorSize];
+ if(!val)
+  return false;
+ //Initializing the result vector
+ int y, x;
+ double value;
+
+ for (int i = 0; i < NNZ; ++i) {
+    inFile>>x;//zero indexing
+    inFile>>y;
+    inFile>>value;
+    if(y > 1 || x > n) {
+        std::cout << x << " " << y << " " << value ;
+        return false;
+    }
+    val[x-1] = value;
+ }
  return true;
 }
 
@@ -153,49 +217,49 @@ bool printLower(std::string fName){
   *    Triplet in the rest of lines: row    col    value
   */
  std::getline(inFile,line);
- //std::cout<<line<<"\n";
- std::cout<<"%%MatrixMarket matrix coordinate real symmetric\n";
+ //std::cout<<line<<std::endl;
+ std::cout<<"%%MatrixMarket matrix coordinate real symmetric" << std::endl;
  for (unsigned i=0; i<line.length(); line[i]=tolower(line[i]),i++);
  std::istringstream iss(line);
  if (!(iss >> banner >> mtx >> crd >> arith >> sym)){
-  std::cout<<"Invalid header (first line does not contain 5 tokens)\n";
+  std::cout<<"Invalid header (first line does not contain 5 tokens)" << std::endl;
   return false;
  }
 
  if(banner.compare("%%matrixmarket")) {
-  std::cout<<"Invalid header (first token is not \"%%%%MatrixMarket\")\n";
+  std::cout<<"Invalid header (first token is not \"%%%%MatrixMarket\")" << std::endl;
   return false;
  }
  if(mtx.compare("matrix")) {
-  std::cout<<"Not a matrix; this driver cannot handle that.\"\n";
+  std::cout<<"Not a matrix; this driver cannot handle that." << std::endl;
   return false;
  }
  if(crd.compare("coordinate")) {
-  std::cout<<"Not in coordinate format; this driver cannot handle that.\"\n";
+  std::cout<<"Not in coordinate format; this driver cannot handle that." << std::endl;
   return false;
  }
  if(arith.compare("real")) {
   if(!arith.compare("complex")) {
-   std::cout<<"Complex matrix; use zreadMM instead!\n";
+   std::cout<<"Complex matrix; use zreadMM instead!" << std::endl;
    return false;
   }
   else if(!arith.compare("pattern")) {
-   std::cout<<"Pattern matrix; values are needed!\n";
+   std::cout<<"Pattern matrix; values are needed!" << std::endl;
    return false;
   }
   else {
-   std::cout<<"Unknown arithmetic\n";
+   std::cout<<"Unknown arithmetic" << std::endl;
    return false;
   }
  }
  while (!line.compare(0,1,"%"))
  {
   std::getline(inFile, line);
-  //std::cout<<line<<"\n";
+  //std::cout<<line<<std::endl;
  }
  std::istringstream issDim(line);
  if (!(issDim >> n >> n >> NNZ)){
-  std::cout<<"The matrix dimension is missing\n";
+  std::cout<<"The matrix dimension is missing" << std::endl;
   return false;
  }
  if(n <= 0 || NNZ <= 0)
@@ -213,9 +277,9 @@ bool printLower(std::string fName){
         ++nnzCnt;
     }
  }
- std::cout << n << " " << n << " " << nnzCnt << "\n";
+ std::cout << n << " " << n << " " << nnzCnt << std::endl;
  for (auto f : contents) {
-    std::cout << f.first.first << " " << f.first.second << " " << f.second << "\n";
+    std::cout << f.first.first << " " << f.first.second << " " << f.second << std::endl;
  }
  return true;
 }
@@ -236,60 +300,9 @@ void insertToLevel(std::vector< std::vector<int> >& levels, int const node, int 
     levels[currLevel].push_back(node);
 }
 
-int main(int argc, char *argv[]) {
-    std::string fName = "b.mtx";
-    std::chrono::time_point<std::chrono::system_clock> start, end;
-    std::chrono::duration<double> elapsed_seconds;
-    // int chunk = atoi(argv[1]);
-    int *col, *row;
-    double  *y, *val, *x, *x1, *x2;
-
-    // printLower(fName);
-    // exit(0);
-
-    int n, nnz;
-    // std::cout << "here";
-    if (!readMatrix(fName,n,nnz,col,row,val))
-        return -1;
-    x = new double[n]();
-    x1 = new double[n]();
-    x2 = new double[n]();
-    // for (int i = 0; i < n; ++i) {
-    //     x[i] = 1;
-    //     x1[i] = 1;
-    // }
-    // x[0] = 1;
-    // x[5] = 1;
-    x[168] = -0.1175002157603823;
-    x[846] = -1.0460530293888037;
-    x[1694] = 0.9201;
-
-    // x1 = new double[n]();
-    x1[168] = -0.1175002157603823;
-    x1[846] = -1.0460530293888037;
-    x1[1694] = 0.9201;
-
-    x2[168] = -0.1175002157603823;
-    x2[846] = -1.0460530293888037;
-    x2[1694] = 0.9201;
-
-//     for (int i = 0; i < nnz; ++i) {
-//      std::cout << val[i] << ", ";
-//  }
-//  std::cout << "\n";
-//  for (int i = 0; i < nnz; ++i) {
-//      std::cout << row[i] + 1 << ", ";
-//  }
-//  std::cout << "\n";
-//  for (int i = 0; i <= n; ++i) {
-//      std::cout << col[i] << ", ";
-//  }
-//  std::cout << "\n";
-
-    // Making Reachset (First constructing the DAG)
+// Function that returns the DAG. visited matrix is later used to generate reachset
+std::vector<std::set<int>> makeDAG(int* &col, int* &row, double* &val, int n, bool* &visited) {
     std::vector<std::set<int>> dag(n);
-    std::set<int> reachset;
-    bool visited[n];
     for (int i = 0; i < n; ++i) {
         visited[i] = false;
     }
@@ -302,6 +315,76 @@ int main(int argc, char *argv[]) {
                 dag[i-1].insert(row[j]);
         }
     }
+    return dag;
+}
+
+// Verify if L*x = b
+int verify(int* &col, int* &row, double* &val, int n, double* &x, std::string rhsFName) {
+    double *res = new double[n]();
+
+    // L*x sparse-matrix vector multiplcation
+    for (int i = 0; i < n; ++i) {
+        for (int j = col[i]; j < col[i+1]; ++j) {
+            res[row[j]] += val[j] * x[i];
+        }
+    }
+
+    double *x1;
+    if (!readRHSMatrix(rhsFName, x1, n)) {
+        std::cout << "Error while reading RHS matrix." << std::endl;
+        return -1;
+    }
+
+    int count = 0;
+    for (int i = 0; i < n; ++i) {
+        double diff = x1[i] - res[i];
+        if (diff < 0) {
+            diff *= -1;
+        }
+        if (diff > 0.001) {
+            ++count;
+            std::cout << i << " " << res[i] << " " << x1[i] << std::endl;
+        }
+    }
+    return count;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        std::cout << "Usage: ./<bin> /path/to/L.mtx /path/to/RHS.mtx" << std::endl;
+        return -1;
+    }
+    std::string fName = argv[1];
+    std::string rhsFName = argv[2];
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::duration<double> elapsed_seconds;
+    // int chunk = atoi(argv[1]);
+    int *col, *row;
+    double  *y, *val, *x, *x1, *x2;
+
+    // printLower(fName);
+    // exit(0);
+
+    int n, nnz;
+    // std::cout << "here";
+    if (!readSparseMatrix(fName,n,nnz,col,row,val)) {
+        std::cout << "Error while reading the sparse matrix. Make sure that it is a lower-triangular matrix in matrix market format." << std::endl;
+        return -1;
+    }
+    if (!readRHSMatrix(rhsFName, x, n)) {
+        std::cout << "Error while reading RHS matrix." << std::endl;
+        return -1;
+    }
+    x1 = new double[n]();
+    for (int i = 0; i < n; ++i) {
+        x1[i] = x[i];
+    }
+
+    // Making Reachset (First constructing the DAG)
+    // std::vector<std::set<int>> dag(n);
+    bool *visited = new bool[n]();
+    std::set<int> reachset;
+    std::vector<std::set<int>> dag = makeDAG(col, row, val, n, visited);
 
     // Creating dependencies using DFS
     for (int i = 0; i < n; ++i) {
@@ -317,13 +400,13 @@ int main(int argc, char *argv[]) {
     //     for (auto j : dag[f]) {
     //         std::cout << j+1 << " ";
     //     }
-    //     std::cout << "\n";
+    //     std::cout << std::endl;
     // }
 
     // std::cout << "here";
     // exit(0);
 
-#if 0
+#if 1
     // Reach set made. Now Solve
     start = std::chrono::system_clock::now();
     for (auto j : reachset) {
@@ -336,7 +419,7 @@ int main(int argc, char *argv[]) {
     }
     end = std::chrono::system_clock::now();
     elapsed_seconds = end-start;
-    std::cout << "Optimised lsolve: " << elapsed_seconds.count() << "\n";
+    std::cout << "Optimised lsolve: " << elapsed_seconds.count() << std::endl;
     //*******************************************************************
     // Serial Lsolve
     start = std::chrono::system_clock::now();
@@ -350,7 +433,7 @@ int main(int argc, char *argv[]) {
     }
     end = std::chrono::system_clock::now();
     elapsed_seconds = end-start;
-    std::cout << "Naive lsolve: " << elapsed_seconds.count() << "\n";
+    std::cout << "Naive lsolve: " << elapsed_seconds.count() << std::endl;
     //***************************************************************
     // Verify
     for (int i = 0; i < n; ++i) {
@@ -361,8 +444,8 @@ int main(int argc, char *argv[]) {
         assert(diff < 0.001);
     }
     //****************************************************************
-#endif    
-#if 1
+#endif
+#if 0
     // Creating levels and tasks
     std::vector<int> indegree(n); // Keep a count of incoming edges to record root nodes
     std::vector< std::vector<int> > levels; // Store levels of parallelism. Tasks inside same level can be performed parallely; each 2 levels need to sync
@@ -393,16 +476,16 @@ int main(int argc, char *argv[]) {
     // Levels created, now parallel solve
     // start = std::chrono::system_clock::now();
     // for (int i = 0; i < levels.size(); ++i) {
-    //     std::cout << "Level " << i << "\n";
+    //     // std::cout << "Level " << i << std::endl;
     //     #pragma omp parallel for
     //     for (int j = 0; j < levels[i].size(); ++j) {
-    //         std::cout << omp_get_thread_num() << " performing " << levels[i][j] + 1 << "\n";
-    //         // int idx = levels[i][j];
-    //         // x2[idx] /= val[col[idx]];
-    //         // int p = col[idx] + 1;
-    //         // for (; p < col[idx+1]; ++p) {
-    //         //     x2[row[p]] -= val[p] * x2[idx];
-    //         // }
+    //         // std::cout << omp_get_thread_num() << " performing " << levels[i][j] + 1 << std::endl;
+    //         int idx = levels[i][j];
+    //         x[idx] /= val[col[idx]];
+    //         int p = col[idx] + 1;
+    //         for (; p < col[idx+1]; ++p) {
+    //             x[row[p]] -= val[p] * x[idx];
+    //         }
     //     }
     // }
 
@@ -410,7 +493,6 @@ int main(int argc, char *argv[]) {
     start = std::chrono::system_clock::now();
     #pragma omp parallel
     {
-        int tid = omp_get_thread_num();
         while (currLevel < levels.size()) {
             #pragma omp for schedule(dynamic, 5)
             for (int j = 0; j < levels[currLevel].size(); ++j) {
@@ -428,7 +510,7 @@ int main(int argc, char *argv[]) {
     }
     end = std::chrono::system_clock::now();
     elapsed_seconds = end-start;
-    std::cout << "Parallel lsolve: " << elapsed_seconds.count() << "\n";
+    std::cout << "Parallel lsolve: " << elapsed_seconds.count() << std::endl;
 
     for (int j = 0; j < n; ++j) {
         // std::cout << f + 1 << ",";
@@ -438,26 +520,44 @@ int main(int argc, char *argv[]) {
             x1[row[p]] -= val[p] * x1[j];
         }
     }
+    std::cout << verify(col, row, val, n, x, rhsFName) << std::endl;
+    // VERIFY
+    // double *res = new double[n]();
+    // for (int i = 0; i < n; ++i) {
+    //     for (int j = col[i]; j < col[i+1]; ++j) {
+    //         res[row[j]] += val[j] * x[i];
+    //     }
+    // }
 
-    int count = 0;
-    for (int i = 0; i < n; ++i) {
-        double diff = x[i] - x1[i];
-        if (diff < 0) {
-            diff *= -1;
-        }
-        if (diff > 0.001) {
-            // std::cout << i << "\n";
-            // ++count;
-            std::cout << x[i] << " " << x1[i] << "\n";
-        }
-        // if (x1[i] != x[i]) {
-        //     std::cout << x[i] << " " << x1[i] << "\n";
-        // }
-    }
+    // for (int i = 0; i < n; ++i) {
+    //     // std::cout << res[i] << " " << x1[i] << std::endl;
+    //     double diff = x1[i] - res[i];
+    //     if (diff < 0) {
+    //         diff *= -1;
+    //     }
+    //     if (diff > 0.001) {
+    //         std::cout << i << " " << res[i] << " " << x1[i] << std::endl;
+    //     }
+    // }
+
+    // int count = 0;
+    // for (int i = 0; i < n; ++i) {
+    //     double diff = x[i] - x1[i];
+    //     if (diff < 0) {
+    //         diff *= -1;
+    //     }
+    //     if (diff > 0.1) {
+    //         if (diff / x1[i] > 0.01)
+    //         std::cout << i << " " << x1[i] << " " << x[i] << " " << diff << " " << diff / x1[i] << std::endl;
+    //     }
+    //     // if (x1[i] != x[i]) {
+    //     //     std::cout << x[i] << " " << x1[i] << std::endl;
+    //     // }
+    // }
     // std::cout << count;
 
     // for (int i = 0; i < n; ++i) {
-    //     std::cout << x[i] << " " << x1[i] << "\n";
+    //     std::cout << x[i] << " " << x1[i] << std::endl;
     // }
 #endif
 
@@ -467,6 +567,6 @@ int main(int argc, char *argv[]) {
     //     for (auto j : levels[i]) {
     //         std::cout << j+1 << ", ";
     //     }
-    //     std::cout << "\n";
+    //     std::cout << std::endl;
     // }
 }
