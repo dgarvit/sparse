@@ -9,47 +9,7 @@
 #include <assert.h>
 #include "readMatrix.h"
 #include "makeSet.h"
-
-// Verify if L*x = b. In case of descrepancy, compare with the results generated from naive lsolve
-int verify(int* &col, int* &row, double* &val, int n, double* &x, std::string rhsFName) {
-    double *res = new double[n]();
-
-    // L*x sparse-matrix vector multiplcation
-    for (int i = 0; i < n; ++i) {
-        for (int j = col[i]; j < col[i+1]; ++j) {
-            res[row[j]] += val[j] * x[i];
-        }
-    }
-
-    double *x1, *x2;
-    if (!readRHSMatrix(rhsFName, x1, n)) {
-        std::cout << "Error while reading RHS matrix." << std::endl;
-        return -1;
-    }
-
-    x2 = new double[n]();
-    for (int i = 0; i < n; ++i) {
-        x2[i] = x1[i];
-    }
-
-    int count = 0;
-    for (int i = 0; i < n; ++i) {
-        double diff = x1[i] - res[i];
-        if (diff < 0) {
-            diff *= -1;
-        }
-        if (x1[i] != 0) {
-            if (diff > 0.001) {
-                
-            }
-        }
-        // if (diff > 0.001) {
-        //     ++count;
-        //     std::cout << i << " " << res[i] << " " << x1[i] << std::endl;
-        // }
-    }
-    return count;
-}
+#include "verify.h"
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -130,53 +90,44 @@ int main(int argc, char *argv[]) {
     std::vector< std::vector<int> > levels = makeLevelSet(dag, reachset, n); // Store levels of parallelism. Tasks inside same level can be performed parallely; each 2 levels need to sync
     
     // Levels created, now parallel solve
-    // start = std::chrono::system_clock::now();
-    // for (int i = 0; i < levels.size(); ++i) {
-    //     // std::cout << "Level " << i << std::endl;
-    //     #pragma omp parallel for
-    //     for (int j = 0; j < levels[i].size(); ++j) {
-    //         // std::cout << omp_get_thread_num() << " performing " << levels[i][j] + 1 << std::endl;
-    //         int idx = levels[i][j];
-    //         x[idx] /= val[col[idx]];
-    //         int p = col[idx] + 1;
-    //         for (; p < col[idx+1]; ++p) {
-    //             x[row[p]] -= val[p] * x[idx];
-    //         }
-    //     }
-    // }
-
-    int currLevel = 0;
     start = std::chrono::system_clock::now();
-    #pragma omp parallel
-    {
-        while (currLevel < levels.size()) {
-            #pragma omp for schedule(dynamic, 5)
-            for (int j = 0; j < levels[currLevel].size(); ++j) {
-                int idx = levels[currLevel][j];
-                x[idx] /= val[col[idx]];
-                int p = col[idx] + 1;
-                for (; p < col[idx+1]; ++p) {
-                    x[row[p]] -= val[p] * x[idx];
-                }
+    for (int i = 0; i < levels.size(); ++i) {
+        #pragma omp parallel for
+        for (int j = 0; j < levels[i].size(); ++j) {
+            int idx = levels[i][j];
+            x[idx] /= val[col[idx]];
+            int p = col[idx] + 1;
+            for (; p < col[idx+1]; ++p) {
+                x[row[p]] -= val[p] * x[idx];
             }
-            #pragma omp master
-            ++currLevel;
-            #pragma omp barrier
         }
     }
+
+    // int currLevel = 0;
+    // start = std::chrono::system_clock::now();
+    // #pragma omp parallel
+    // {
+    //     while (currLevel < levels.size()) {
+    //         #pragma omp for schedule(dynamic, 5)
+    //         for (int j = 0; j < levels[currLevel].size(); ++j) {
+    //             int idx = levels[currLevel][j];
+    //             x[idx] /= val[col[idx]];
+    //             int p = col[idx] + 1;
+    //             for (; p < col[idx+1]; ++p) {
+    //                 x[row[p]] -= val[p] * x[idx];
+    //             }
+    //         }
+    //         #pragma omp master
+    //         ++currLevel;
+    //         #pragma omp barrier
+    //     }
+    // }
     end = std::chrono::system_clock::now();
     elapsed_seconds = end-start;
     // std::cout << "Parallel lsolve: " << elapsed_seconds.count() << std::endl;
     std::cout << elapsed_seconds.count() << std::endl;
 
-    // for (int j = 0; j < n; ++j) {
-    //     x1[j] /= val[col[j]];
-    //     int p = col[j] + 1;
-    //     for (; p < col[j+1]; ++p) {
-    //         x1[row[p]] -= val[p] * x1[j];
-    //     }
-    // }
-    // std::cout << verify(col, row, val, n, x, rhsFName) << std::endl;
+    verify(col, row, val, n, x, rhsFName);
     // VERIFY
     // double *res = new double[n]();
     // for (int i = 0; i < n; ++i) {

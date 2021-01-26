@@ -1,10 +1,10 @@
+#ifndef READ_MATRIX_H
+#define READ_MATRIX_H
+
 #include <cstdio>
 #include <fstream>
 #include <iostream>
-#include <chrono>
 #include <sstream>
-#include <set>
-#include <vector>
 
 /*
  * reading a CSC matrix from a coordinate file, stored col-ordered
@@ -194,3 +194,5 @@ bool readRHSMatrix(std::string fName, double* &val, const int size) {
  }
  return true;
 }
+
+#endif

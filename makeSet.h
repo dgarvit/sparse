@@ -1,3 +1,6 @@
+#ifndef MAKE_SET_H
+#define MAKE_SET_H
+
 #include <set>
 #include <vector>
 
@@ -79,3 +82,5 @@ std::vector< std::vector<int> > makeLevelSet(std::vector<std::set<int>> const &d
     }
     return levels;
 }
+
+#endif
